@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Environment variables — NEVER commit this, it has your DB connection,
+# JWT secret, Paystack key, and admin secret in it
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor folders
+.vscode/
+.idea/
