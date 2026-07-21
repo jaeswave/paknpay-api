@@ -10,7 +10,7 @@ const adminLogin = async (req, res) => {
       return res.status(500).json({ message: 'ADMIN_SECRET is not configured on the server' });
     }
     if (secret !== process.env.ADMIN_SECRET) {
-      return res.status(401).json({ message: 'Incorrect admin secret' });
+      return res.status(401).json({ message: 'Invalid' });
     }
 
     const token = jwt.sign({ role: 'platform_admin' }, process.env.JWT_SECRET, { expiresIn: '12h' });
