@@ -41,6 +41,41 @@ const initSession = async (req, res) => {
   }
 };
 
+const findSession = async (req, res) => {
+  try {
+    const { lotId, plateNumber } = req.query;
+    if (!lotId || !plateNumber) {
+      return res
+        .status(400)
+        .json({ message: "lotId and plateNumber are required" });
+    }
+
+    const session = await Session.findOne({
+      lotId,
+      plateNumber: { $regex: `^${plateNumber.trim()}$`, $options: "i" },
+      status: {
+        $in: ["pending", "active", "pending-payment", "paid", "cash-paid"],
+      },
+    }).sort({ createdAt: -1 });
+
+    if (!session) {
+      return res
+        .status(404)
+        .json({ message: "No active session found for that plate number" });
+    }
+
+    res.json({
+      sessionToken: session.sessionToken,
+      status: session.status,
+      redirectTo: ["paid", "cash-paid"].includes(session.status)
+        ? "receipt"
+        : "session",
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 const getSessionByToken = async (req, res) => {
   try {
     const { token } = req.params;
@@ -321,7 +356,16 @@ const getSessionHistory = async (req, res) => {
 };
 
 module.exports = {
-  initSession, getSessionByToken, requestPayment, allowEntry,
-  confirmExit, markCashPaid, waiveFee, createManualSession,
-  getActiveSessions, syncOfflineSessions, getSessionHistory,
+  initSession,
+  findSession,
+  getSessionByToken,
+  requestPayment,
+  allowEntry,
+  confirmExit,
+  markCashPaid,
+  waiveFee,
+  createManualSession,
+  getActiveSessions,
+  syncOfflineSessions,
+  getSessionHistory,
 };

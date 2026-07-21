@@ -20,8 +20,11 @@ const createLot = async (req, res) => {
 
 const getLotByShortCode = async (req, res) => {
   try {
-    const lot = await ParkingLot.findOne({ shortCode: req.params.code.toUpperCase(), isActive: true });
-    if (!lot) return res.status(404).json({ message: 'Parking lot not found' });
+    const lot = await ParkingLot.findOne({
+      shortCode: req.params.code.toUpperCase(),
+      isActive: true,
+    }).select("-commissionPercentage");
+    if (!lot) return res.status(404).json({ message: "Parking lot not found" });
     res.json({ lot });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -40,14 +43,32 @@ const getLotById = async (req, res) => {
 
 const updateLot = async (req, res) => {
   try {
-    const { name, address, phone, totalSpots, ratePerHour, minimumCharge, gracePeriodMinutes } = req.body;
+    const {
+      name,
+      address,
+      phone,
+      totalSpots,
+      ratePerHour,
+      minimumCharge,
+      gracePeriodMinutes,
+      valetFee,
+    } = req.body;
     const lot = await ParkingLot.findByIdAndUpdate(
       req.params.id,
-      { name, address, phone, totalSpots, ratePerHour, minimumCharge, gracePeriodMinutes },
-      { new: true }
+      {
+        name,
+        address,
+        phone,
+        totalSpots,
+        ratePerHour,
+        minimumCharge,
+        gracePeriodMinutes,
+        valetFee,
+      },
+      { new: true },
     );
-    if (!lot) return res.status(404).json({ message: 'Lot not found' });
-    res.json({ message: 'Lot updated', lot });
+    if (!lot) return res.status(404).json({ message: "Lot not found" });
+    res.json({ message: "Lot updated", lot });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

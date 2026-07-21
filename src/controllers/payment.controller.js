@@ -278,4 +278,42 @@ const getCommissionSummary = async (req, res) => {
   }
 };
 
-module.exports = { initializePayment, verifyPayment, simulatePayment, webhook, getCommissionLedger, getCommissionSummary };
+
+
+const getMyCommissionSummary = async (req, res) => {
+  try {
+    const lotId = req.attendant.lotId;
+    const filter = { lotId, settled: false };
+
+    const result = await Commission.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$commissionAmount" },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const unsettledCommissionIds = await Commission.find(filter).select("_id");
+
+    res.json({
+      amountOwed: result[0]?.total || 0,
+      unsettledCount: result[0]?.count || 0,
+      commissionIds: unsettledCommissionIds.map((c) => c._id),
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = {
+  initializePayment,
+  verifyPayment,
+  simulatePayment,
+  webhook,
+  getCommissionLedger,
+  getCommissionSummary,
+  getMyCommissionSummary,
+};
