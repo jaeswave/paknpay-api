@@ -14,7 +14,7 @@ const login = async (req, res) => {
     const { phone, pin } = req.body;
     const attendant = await Attendant.findOne({ phone, isActive: true });
     if (!attendant)
-      return res.status(404).json({ message: "Attendant not found" });
+      return res.status(404).json({ message: "Invalid Credentials" });
     const isMatch = await attendant.comparePin(pin);
     if (!isMatch) return res.status(401).json({ message: "Invalid PIN" });
     const token = signToken(attendant);
