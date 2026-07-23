@@ -9,12 +9,43 @@ const signToken = (attendant) =>
     { expiresIn: "12h" },
   );
 
+// const login = async (req, res) => {
+//   try {
+//     const { phone, pin } = req.body;
+//     const attendant = await Attendant.findOne({ phone, isActive: true });
+//     if (!attendant)
+//       return res.status(404).json({ message: "Invalid Credentials" });
+//     const isMatch = await attendant.comparePin(pin);
+//     if (!isMatch) return res.status(401).json({ message: "Invalid PIN" });
+//     const token = signToken(attendant);
+//     res.json({
+//       message: "Login successful",
+//       token,
+//       attendant: {
+//         id: attendant._id,
+//         name: attendant.name,
+//         phone: attendant.phone,
+//         role: attendant.role,
+//         lotId: attendant.lotId,
+//         hasDashboardPin: !!attendant.dashboardPin,
+//       },
+//     });
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+
+
 const login = async (req, res) => {
   try {
     const { phone, pin } = req.body;
-    const attendant = await Attendant.findOne({ phone, isActive: true });
+    const attendant = await Attendant.findOne({
+      phone,
+      isActive: true,
+    }).populate("lotId");
     if (!attendant)
-      return res.status(404).json({ message: "Invalid Credentials" });
+      return res.status(404).json({ message: "Attendant not found" });
     const isMatch = await attendant.comparePin(pin);
     if (!isMatch) return res.status(401).json({ message: "Invalid PIN" });
     const token = signToken(attendant);
@@ -26,15 +57,15 @@ const login = async (req, res) => {
         name: attendant.name,
         phone: attendant.phone,
         role: attendant.role,
-        lotId: attendant.lotId,
+        lotId: attendant.lotId._id,
         hasDashboardPin: !!attendant.dashboardPin,
+        lotApprovalStatus: attendant.lotId.approvalStatus,
       },
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
-
 const signupOwner = async (req, res) => {
   try {
     const { name, phone, pin, dashboardPin, lot } = req.body;
@@ -100,19 +131,20 @@ const signupOwner = async (req, res) => {
 
     const token = signToken(attendant);
 
-    res.status(201).json({
-      message: "Account and parking lot created",
-      token,
-      attendant: {
-        id: attendant._id,
-        name: attendant.name,
-        phone: attendant.phone,
-        role: attendant.role,
-        lotId: newLot._id,
-        hasDashboardPin: true,
-      },
-      lot: newLot,
-    });
+   res.status(201).json({
+     message: "Account and parking lot created",
+     token,
+     attendant: {
+       id: attendant._id,
+       name: attendant.name,
+       phone: attendant.phone,
+       role: attendant.role,
+       lotId: newLot._id,
+       hasDashboardPin: true,
+       lotApprovalStatus: newLot.approvalStatus,
+     },
+     lot: newLot,
+   });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -122,16 +154,15 @@ const verifyDashboardPin = async (req, res) => {
   try {
     const { pin } = req.body;
     const attendant = await Attendant.findById(req.attendant.id);
-    if (!attendant)
-      return res.status(404).json({ message: "Attendant not found" });
-    if (attendant.role !== "owner")
-      return res
-        .status(403)
-        .json({ message: "Only owners have a dashboard PIN" });
+    // Deliberately the same generic error for "not an owner" and "wrong
+    // PIN" — a non-owner attendant guessing at this shouldn't be able to
+    // tell from the response whether they're on the right track.
+    if (!attendant || attendant.role !== "owner") {
+      return res.status(401).json({ message: "Incorrect PIN" });
+    }
 
     const isMatch = await attendant.compareDashboardPin(pin);
-    if (!isMatch)
-      return res.status(401).json({ message: "Incorrect dashboard PIN" });
+    if (!isMatch) return res.status(401).json({ message: "Incorrect PIN" });
 
     res.json({ message: "PIN verified", verified: true });
   } catch (err) {
@@ -166,7 +197,14 @@ const getMe = async (req, res) => {
     const attendant = await Attendant.findById(req.attendant.id)
       .select("-pin -dashboardPin")
       .populate("lotId");
-    res.json({ attendant });
+    if (!attendant)
+      return res.status(404).json({ message: "Attendant not found" });
+    res.json({
+      attendant: {
+        ...attendant.toObject(),
+        lotApprovalStatus: attendant.lotId?.approvalStatus,
+      },
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
